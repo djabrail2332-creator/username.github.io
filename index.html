@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Поиск красивых телефонных номеров</title>
+
+<style>
+body {
+    background:#0f172a;
+    color:#e5e7eb;
+    font-family:Arial,sans-serif;
+    padding:20px;
+}
+.container { max-width:900px; margin:auto; }
+textarea {
+    width:100%;
+    height:140px;
+    padding:12px;
+    font-size:16px;
+    border-radius:10px;
+}
+button {
+    width:100%;
+    padding:14px;
+    margin-top:10px;
+    border-radius:10px;
+    border:none;
+    background:#38bdf8;
+    font-weight:bold;
+    cursor:pointer;
+}
+.group {
+    background:#020617;
+    border-radius:12px;
+    padding:12px;
+    margin-top:12px;
+}
+.group.pair {
+    border:2px solid #38bdf8;
+}
+.number {
+    padding:6px 0;
+}
+.highlight span {
+    color:#facc15;
+    font-weight:bold;
+}
+.badge {
+    font-size:12px;
+    color:#38bdf8;
+    margin-bottom:6px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>Красивые телефонные номера</h1>
+
+<textarea id="input" placeholder="
+8928-735-05-75
+8928-735-05-25
+8928-735-79-89
+8928-735-79-88
+"></textarea>
+
+<button onclick="analyze()">Анализировать</button>
+
+<div id="output"></div>
+</div>
+
+<script>
+function analyze() {
+    const text = document.getElementById("input").value;
+
+    // 1️⃣ вытаскиваем все цифры
+    const digits = text.replace(/\D/g, "");
+
+    // 2️⃣ режем по 11 цифр
+    let raw = [];
+    for (let i = 0; i + 10 < digits.length; i += 11) {
+        raw.push(digits.substr(i, 11));
+    }
+
+    if (!raw.length) {
+        document.getElementById("output").innerHTML = "Номера не найдены";
+        return;
+    }
+
+    // 3️⃣ нормализация
+    const phones = raw.map(p => {
+        if (p.startsWith("8")) p = "7" + p.slice(1);
+        if (p.length === 10) p = "7" + p;
+        return "+7" + p.slice(1);
+    });
+
+    // 4️⃣ группировка по расстоянию Хэмминга = 1
+    const used = new Set();
+    const groups = [];
+
+    for (let i = 0; i < phones.length; i++) {
+        if (used.has(i)) continue;
+
+        let group = [phones[i]];
+        used.add(i);
+
+        for (let j = i + 1; j < phones.length; j++) {
+            if (used.has(j)) continue;
+            if (hamming(phones[i], phones[j]) === 1) {
+                group.push(phones[j]);
+                used.add(j);
+            }
+        }
+
+        groups.push(group);
+    }
+
+    // 5️⃣ вывод
+    let html = "";
+
+    groups.forEach(g => {
+        const isPair = g.length > 1;
+        html += `<div class="group ${isPair ? "pair" : ""}">`;
+        if (isPair) html += `<div class="badge">🔁 Парные номера</div>`;
+
+        g.forEach(num => {
+            html += `<div class="number highlight">${highlight(num)}</div>`;
+        });
+
+        html += `</div>`;
+    });
+
+    document.getElementById("output").innerHTML = html;
+}
+
+// расстояние Хэмминга
+function hamming(a, b) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) d++;
+    }
+    return d;
+}
+
+function highlight(num) {
+    const n = num.slice(2);
+    const freq = {};
+    n.split("").forEach(d => freq[d] = (freq[d] || 0) + 1);
+
+    return "+7" + n.split("").map(d =>
+        freq[d] > 1 ? `<span>${d}</span>` : d
+    ).join("");
+}
+</script>
+
+</body>
+</html>

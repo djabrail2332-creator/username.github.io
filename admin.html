@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка</title>
+
+<style>
+body {
+    background:#020617;
+    color:#e5e7eb;
+    font-family:Arial,sans-serif;
+    padding:14px;
+}
+h1 { text-align:center; }
+
+input, textarea {
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:8px;
+    border:none;
+}
+
+button {
+    width:100%;
+    padding:10px;
+    margin-top:6px;
+    border-radius:8px;
+    border:none;
+    background:#38bdf8;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.group {
+    background:#0f172a;
+    border-radius:10px;
+    padding:12px;
+    margin-top:12px;
+}
+
+.row {
+    display:flex;
+    gap:6px;
+    margin-top:6px;
+}
+
+.row button {
+    flex:1;
+}
+
+.hidden { display:none; }
+
+.status-active { background:#22c55e; color:#020617; }
+.status-sold { background:#ef4444; color:#fff; }
+</style>
+</head>
+
+<body>
+
+<h1>Админка</h1>
+
+<!-- 🔐 LOGIN -->
+<div id="loginBox">
+    <input id="loginUser" placeholder="Логин">
+    <input id="loginPass" type="password" placeholder="Пароль">
+    <button onclick="login()">Войти</button>
+</div>
+
+<!-- ⚙️ ADMIN -->
+<div id="adminBox" class="hidden">
+
+<textarea id="input" placeholder="Вставь новые номера (необязательно)"></textarea>
+<button onclick="analyze()">Добавить и найти пары</button>
+
+<div id="groups"></div>
+
+<button onclick="save()">Сохранить изменения</button>
+<button onclick="logout()">Выйти</button>
+
+</div>
+
+<script>
+/* 🔐 АДМИНЫ */
+const ADMINS = {
+    admin: "12345",
+    jabrail: "2024"
+};
+
+let result = [];
+
+/* 🔐 LOGIN */
+function login() {
+    const u = loginUser.value.trim();
+    const p = loginPass.value.trim();
+
+    if (ADMINS[u] === p) {
+        loginBox.classList.add("hidden");
+        adminBox.classList.remove("hidden");
+        sessionStorage.setItem("admin", "1");
+        load();
+    } else {
+        alert("Неверный логин или пароль");
+    }
+}
+
+if (sessionStorage.getItem("admin") === "1") {
+    loginBox.classList.add("hidden");
+    adminBox.classList.remove("hidden");
+    load();
+}
+
+/* 🚪 LOGOUT */
+function logout() {
+    sessionStorage.removeItem("admin");
+    location.reload();
+}
+
+/* 📥 ЗАГРУЗКА ИЗ БАЗЫ */
+function load() {
+    result = JSON.parse(localStorage.getItem("SHOP_DATA") || "[]");
+    render();
+}
+
+/* ➕ АНАЛИЗ И ДОБАВЛЕНИЕ */
+function analyze() {
+    const text = input.value;
+    if (!text.trim()) return;
+
+    const digits = text.replace(/\D/g, "");
+    let raw = [];
+    for (let i = 0; i + 10 < digits.length; i += 11) {
+        raw.push(digits.substr(i, 11));
+    }
+
+    const phones = raw.map(p => {
+        if (p.startsWith("8")) p = "7" + p.slice(1);
+        return "+7" + p.slice(1);
+    });
+
+    const used = new Set();
+
+    for (let i = 0; i < phones.length; i++) {
+        if (used.has(i)) continue;
+
+        let group = [phones[i]];
+        used.add(i);
+
+        for (let j = i + 1; j < phones.length; j++) {
+            if (!used.has(j) && hamming(phones[i], phones[j]) === 1) {
+                group.push(phones[j]);
+                used.add(j);
+            }
+        }
+
+        result.push({
+            numbers: group,
+            price: 0,
+            category: group.length > 1 ? "gold" : "simple",
+            status: "active"
+        });
+    }
+
+    input.value = "";
+    render();
+}
+
+/* 🧾 РЕНДЕР */
+function render() {
+    groups.innerHTML = "";
+
+    result.forEach((g, i) => {
+        groups.innerHTML += `
+        <div class="group">
+            <div>${g.numbers.join("<br>")}</div>
+
+            <input type="number" placeholder="Цена"
+                value="${g.price || ""}"
+                oninput="setPrice(${i}, this.value)">
+
+            <div class="row">
+                <button class="status-active" onclick="setStatus(${i}, 'active')">В наличии</button>
+                <button class="status-sold" onclick="setStatus(${i}, 'sold')">Продано</button>
+                <button onclick="removeItem(${i})">Удалить</button>
+            </div>
+        </div>`;
+    });
+}
+
+/* ✏️ ИЗМЕНЕНИЯ */
+function setPrice(i, val) {
+    result[i].price = Number(val);
+}
+
+function setStatus(i, status) {
+    result[i].status = status;
+    render();
+}
+
+function removeItem(i) {
+    if (confirm("Удалить номер?")) {
+        result.splice(i, 1);
+        render();
+    }
+}
+
+/* 💾 СОХРАНЕНИЕ */
+function save() {
+    localStorage.setItem("SHOP_DATA", JSON.stringify(result));
+    alert("Сохранено");
+}
+
+/* 📐 ХЭММИНГ */
+function hamming(a, b) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) d++;
+    }
+    return d;
+}
+</script>
+
+</body>
+</html>

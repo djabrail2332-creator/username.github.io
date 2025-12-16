@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка</title>
+
+<style>
+body{background:#020617;color:#e5e7eb;font-family:Arial;padding:14px}
+input,textarea{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none}
+button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none;background:#38bdf8;font-weight:bold}
+.group{background:#0f172a;padding:12px;border-radius:10px;margin-top:12px}
+.row{display:flex;gap:6px;margin-top:6px}
+.row button{flex:1}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+<h1>Админка</h1>
+
+<div id="loginBox">
+  <input id="loginUser" placeholder="Логин">
+  <input id="loginPass" type="password" placeholder="Пароль">
+  <button onclick="login()">Войти</button>
+</div>
+
+<div id="adminBox" class="hidden">
+<textarea id="input" placeholder="Вставь номера"></textarea>
+<button onclick="analyze()">Найти пары</button>
+<div id="groups"></div>
+<button onclick="publish()">Опубликовать</button>
+<button onclick="logout()">Выйти</button>
+</div>
+
+<script>
+const ADMINS={admin:"12345",jabrail:"2024"};
+let result=[];
+
+function login(){
+  if(ADMINS[loginUser.value]===loginPass.value){
+    loginBox.classList.add("hidden");
+    adminBox.classList.remove("hidden");
+    sessionStorage.admin=1;
+  } else alert("Неверно");
+}
+if(sessionStorage.admin)login();
+
+function logout(){sessionStorage.clear();location.reload();}
+
+function analyze(){
+  const d=input.value.replace(/\D/g,"");
+  let raw=[];
+  for(let i=0;i+10<d.length;i+=11)raw.push(d.substr(i,11));
+  const phones=raw.map(p=>"+7"+(p.startsWith("8")?p.slice(1):p.slice(1)));
+
+  const used=new Set();result=[];
+  for(let i=0;i<phones.length;i++){
+    if(used.has(i))continue;
+    let g=[phones[i]];used.add(i);
+    for(let j=i+1;j<phones.length;j++){
+      if(!used.has(j)&&ham(phones[i],phones[j])===1){
+        g.push(phones[j]);used.add(j);
+      }
+    }
+    result.push({numbers:g,price:0,category:g.length>1?"gold":"simple",status:"active"});
+  }
+  render();
+}
+
+function render(){
+  groups.innerHTML="";
+  result.forEach((g,i)=>{
+    groups.innerHTML+=`
+    <div class="group">
+      <div>${g.numbers.join("<br>")}</div>
+      <input placeholder="Цена" oninput="g.price=+this.value">
+      <div class="row">
+        <button onclick="g.status='active'">В наличии</button>
+        <button onclick="g.status='sold'">Продано</button>
+        <button onclick="result.splice(${i},1);render()">Удалить</button>
+      </div>
+    </div>`;
+  });
+}
+
+function publish(){
+  localStorage.setItem("SHOP_DATA",JSON.stringify(result));
+  alert("Опубликовано");
+}
+
+function ham(a,b){let d=0;for(let i=0;i<a.length;i++)if(a[i]!=b[i])d++;return d;}
+</script>
+</body>
+</html>

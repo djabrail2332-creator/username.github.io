@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Красивые телефонные номера</title>
+
+<style>
+body {
+    background:#0f172a;
+    color:#e5e7eb;
+    font-family:Arial,sans-serif;
+    padding:20px;
+}
+.container { max-width:1000px; margin:auto; }
+textarea {
+    width:100%;
+    height:150px;
+    padding:12px;
+    font-size:16px;
+    border-radius:10px;
+}
+button {
+    padding:14px;
+    margin-top:10px;
+    border-radius:10px;
+    border:none;
+    background:#38bdf8;
+    font-weight:bold;
+    cursor:pointer;
+    width:100%;
+}
+.group {
+    background:#020617;
+    border-radius:12px;
+    padding:12px;
+    margin-top:14px;
+}
+.group.pair { border:2px solid #38bdf8; }
+.gold { border-color:#facc15; }
+.silver { border-color:#94a3b8; }
+
+.number { padding:6px 0; }
+.diff { color:#ef4444; font-weight:bold; }
+.badge { font-size:12px; margin-bottom:6px; }
+.price { color:#4ade80; font-weight:bold; }
+.highlight span { color:#facc15; font-weight:bold; }
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>Красивые телефонные номера</h1>
+
+<textarea id="input" placeholder="
+8928-735-05-75
+8928-735-05-25
+8928-735-79-89
+8928-735-79-88
+"></textarea>
+
+<button onclick="analyze()">Анализировать</button>
+<button onclick="exportCSV()">Экспорт в Excel</button>
+
+<div id="output"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "phones_input";
+document.getElementById("input").value = localStorage.getItem(STORAGE_KEY) || "";
+
+let exportData = [];
+
+function analyze() {
+    const text = document.getElementById("input").value;
+    localStorage.setItem(STORAGE_KEY, text);
+
+    const digits = text.replace(/\D/g, "");
+    let raw = [];
+    for (let i = 0; i + 10 < digits.length; i += 11) {
+        raw.push(digits.substr(i, 11));
+    }
+    if (!raw.length) return;
+
+    const phones = raw.map(p => {
+        if (p.startsWith("8")) p = "7" + p.slice(1);
+        if (p.length === 10) p = "7" + p;
+        return "+7" + p.slice(1);
+    });
+
+    const used = new Set();
+    const groups = [];
+
+    for (let i = 0; i < phones.length; i++) {
+        if (used.has(i)) continue;
+        let g = [phones[i]];
+        used.add(i);
+
+        for (let j = i + 1; j < phones.length; j++) {
+            if (used.has(j)) continue;
+            if (hamming(phones[i], phones[j]) === 1) {
+                g.push(phones[j]);
+                used.add(j);
+            }
+        }
+        groups.push(g);
+    }
+
+    exportData = [];
+    let html = "";
+
+    groups
+      .sort((a,b)=>calcGroupScore(b)-calcGroupScore(a))
+      .forEach(g => {
+        const score = calcGroupScore(g);
+        const category = score >= 150 ? "gold" : score >= 80 ? "silver" : "";
+        const price = Math.round(score * g.length * 150);
+
+        exportData.push({
+            numbers: g.join(" | "),
+            score,
+            price,
+            category: category || "simple"
+        });
+
+        html += `<div class="group pair ${category}">
+            <div class="badge">⭐ score ${score} | 💰 ${price.toLocaleString()} ₽</div>`;
+
+        g.forEach(n => {
+            html += `<div class="number">${markDiff(g[0], n)}</div>`;
+        });
+
+        html += `</div>`;
+    });
+
+    document.getElementById("output").innerHTML = html;
+}
+
+function hamming(a,b){
+    let d=0;
+    for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++;
+    return d;
+}
+
+function calcGroupScore(g){
+    let s=0;
+    g.forEach(n=>{
+        const last4=n.slice(-4);
+        if(last4[0]===last4[2]) s+=30;
+        if(last4[2]===last4[3]) s+=40;
+    });
+    if(g.length>1) s+=70;
+    return s;
+}
+
+function markDiff(base,num){
+    let out="+7";
+    for(let i=2;i<num.length;i++){
+        if(num[i]!==base[i]) out+=`<span class="diff">${num[i]}</span>`;
+        else out+=num[i];
+    }
+    return out;
+}
+
+function exportCSV(){
+    if(!exportData.length) return;
+    let csv="Номера,Категория,Score,Цена\n";
+    exportData.forEach(r=>{
+        csv+=`"${r.numbers}",${r.category},${r.score},${r.price}\n`;
+    });
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="pairs.csv";
+    a.click();
+}
+</script>
+
+</body>
+</html>

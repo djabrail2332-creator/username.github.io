@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка</title>
+<style>
+body{background:#0f172a;color:#fff;font-family:system-ui}
+.box{max-width:420px;margin:30px auto;padding:15px}
+input,button{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:10px}
+button{background:#2563eb;color:#fff;font-weight:600}
+.card{background:#020617;padding:12px;border-radius:12px;margin-bottom:10px}
+.row{display:flex;gap:6px}
+.row button{flex:1;background:#334155}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h2>Админка</h2>
+
+<input id="num" placeholder="89251616628">
+<button onclick="add()">Добавить</button>
+
+<div id="list"></div>
+</div>
+
+<script>
+const API = "https://api.nomersh95.ru";
+
+function load(){
+  fetch(API + "/numbers")
+    .then(r=>r.json())
+    .then(d=>{
+      list.innerHTML="";
+      d.forEach(n=>{
+        list.innerHTML+=`
+          <div class="card">
+            <b>${n.number}</b><br>
+            ${n.status}
+            <div class="row">
+              <button onclick="status(${n.id},'в наличии')">В наличии</button>
+              <button onclick="status(${n.id},'продано')">Продано</button>
+              <button onclick="del(${n.id})">Удалить</button>
+            </div>
+          </div>
+        `;
+      });
+    });
+}
+
+function add(){
+  fetch(API + "/add?number=" + encodeURIComponent(num.value))
+    .then(()=>{ num.value=""; load(); });
+}
+
+function status(id,s){
+  fetch(API + `/status?id=${id}&status=${s}`).then(load);
+}
+
+function del(id){
+  fetch(API + `/delete?id=${id}`).then(load);
+}
+
+load();
+</script>
+
+</body>
+</html>

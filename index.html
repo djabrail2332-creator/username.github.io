@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Красивые номера</title>
+
+<style>
+:root{
+  --bg:#0f172a;
+  --card:#020617;
+  --accent:#2563eb;
+  --text:#ffffff;
+  --muted:#94a3b8;
+  --beauty:#facc15;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header{
+  padding:16px;
+  text-align:center;
+  font-size:22px;
+  font-weight:700;
+  background:#020617;
+}
+
+.container{
+  padding:12px;
+}
+
+input,select{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  font-size:16px;
+  margin-bottom:10px;
+}
+
+.card{
+  background:var(--card);
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:12px;
+}
+
+.number{
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:1px;
+}
+
+.beauty{
+  color:var(--beauty);
+  text-shadow:0 0 6px rgba(250,204,21,.6);
+}
+
+.pair{
+  font-size:15px;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+.actions{
+  margin-top:10px;
+}
+
+.actions a{
+  display:inline-block;
+  margin:6px 6px 0 0;
+  padding:8px 14px;
+  border-radius:12px;
+  background:var(--accent);
+  color:#fff;
+  text-decoration:none;
+  font-size:14px;
+}
+
+footer{
+  padding:14px;
+  text-align:center;
+  font-size:13px;
+  color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+
+<header>Красивые номера</header>
+
+<div class="container">
+  <input id="search" placeholder="Поиск по цифрам (1–2–3…)" />
+
+  <select id="filter">
+    <option value="single">Обычные номера</option>
+    <option value="pair">Парные номера</option>
+  </select>
+
+  <div id="list"></div>
+</div>
+
+<footer>
+  📞 <a href="tel:89251616628" style="color:#60a5fa">8925-161-66-28</a><br>
+  ✈️ <a href="https://t.me/jabrail_d" style="color:#60a5fa">@jabrail_d</a>
+</footer>
+
+<script>
+const API = "https://api.nomersh95.ru/numbers";
+let numbers = [];
+
+// ---- загрузка ----
+fetch(API)
+  .then(r => r.json())
+  .then(d => {
+    numbers = d.filter(n => n.status === "в наличии");
+    render();
+  });
+
+document.getElementById("search").oninput = render;
+document.getElementById("filter").onchange = render;
+
+// ---- красивая комбинация ----
+function isBeautiful(num){
+  return /(00|11|22|33|44|55|66|77|88|99)/.test(num)
+      || /(.)\1\1/.test(num)
+      || /(12|21|23|32|34|43|45|54|56|65|67|76|78|87|89|98)/.test(num);
+}
+
+// ---- отличаются на 1 цифру ----
+function diffOne(a,b){
+  let d=0;
+  for(let i=0;i<a.length;i++){
+    if(a[i]!==b[i]) d++;
+    if(d>1) return false;
+  }
+  return d===1;
+}
+
+// ---- просмотр ----
+function view(id){
+  fetch(API + "/" + id + "/view", { method:"POST" });
+}
+
+// ---- рендер ----
+function render(){
+  const q = document.getElementById("search").value;
+  const f = document.getElementById("filter").value;
+  const box = document.getElementById("list");
+  box.innerHTML = "";
+
+  const used = new Set();
+
+  // ===== ПАРНЫЕ =====
+  if(f==="pair"){
+    for(let i=0;i<numbers.length;i++){
+      if(used.has(numbers[i].id)) continue;
+
+      const pair = numbers.find(
+        n => n.id!==numbers[i].id && diffOne(numbers[i].number,n.number)
+      );
+
+      if(!pair) continue;
+
+      used.add(numbers[i].id);
+      used.add(pair.id);
+
+      if(q && !numbers[i].number.includes(q) && !pair.number.includes(q)) continue;
+
+      box.innerHTML += `
+        <div class="card">
+          <div class="number ${isBeautiful(numbers[i].number)?'beauty':''}">
+            ${numbers[i].number}
+          </div>
+          <div class="number ${isBeautiful(pair.number)?'beauty':''}">
+            ${pair.number}
+          </div>
+          <div class="pair">👁 ${(numbers[i].views||0)+(pair.views||0)} просмотров</div>
+          <div class="actions">
+            <a href="tel:89251616628" onclick="view(${numbers[i].id})">Позвонить</a>
+            <a href="https://wa.me/79251616628" onclick="view(${numbers[i].id})">WhatsApp</a>
+            <a href="https://t.me/jabrail_d" onclick="view(${numbers[i].id})">Telegram</a>
+          </div>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  // ===== ОДИНОЧНЫЕ =====
+  numbers.forEach(n=>{
+    const hasPair = numbers.some(
+      m => m.id!==n.id && diffOne(n.number,m.number)
+    );
+    if(hasPair) return;
+    if(q && !n.number.includes(q)) return;
+
+    box.innerHTML += `
+      <div class="card">
+        <div class="number ${isBeautiful(n.number)?'beauty':''}">
+          ${n.number}
+        </div>
+        <div class="pair">👁 ${n.views||0} просмотров</div>
+        <div class="actions">
+          <a href="tel:89251616628" onclick="view(${n.id})">Позвонить</a>
+          <a href="https://wa.me/79251616628" onclick="view(${n.id})">WhatsApp</a>
+          <a href="https://t.me/jabrail_d" onclick="view(${n.id})">Telegram</a>
+        </div>
+      </div>
+    `;
+  });
+}
+</script>
+
+</body>
+</html>

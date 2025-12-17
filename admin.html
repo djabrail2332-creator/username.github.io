@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка</title>
+
+<style>
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  background:#0f172a;
+  color:#fff;
+}
+.box{
+  max-width:420px;
+  margin:30px auto;
+  padding:15px;
+}
+input,button{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  margin-bottom:10px;
+  font-size:16px;
+}
+button{background:#2563eb;color:#fff;font-weight:600}
+.card{
+  background:#020617;
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:10px;
+}
+.row{display:flex;gap:6px;margin-top:6px}
+.row button{background:#334155}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+<div class="box" id="login">
+  <h2>Вход</h2>
+  <input id="u" placeholder="Логин">
+  <input id="p" type="password" placeholder="Пароль">
+  <button onclick="auth()">Войти</button>
+</div>
+
+<div class="box hidden" id="panel">
+  <h2>Добавить номер</h2>
+  <input id="num" placeholder="8925-161-66-28">
+  <button onclick="add()">Добавить</button>
+
+  <h3>Список</h3>
+  <input id="search" placeholder="Поиск">
+  <div id="list"></div>
+</div>
+
+<script>
+const API = "https://api.nomersh95.ru/numbers";
+const USER = "Daudov";
+const PASS = "Daudov959";
+
+function auth(){
+  if(u.value===USER && p.value===PASS){
+    login.style.display="none";
+    panel.classList.remove("hidden");
+    load();
+  } else alert("Неверные данные");
+}
+
+function load(){
+  fetch(API).then(r=>r.json()).then(show);
+}
+
+function show(data){
+  list.innerHTML="";
+  const q=search.value;
+  data.forEach(n=>{
+    if(q && !n.number.includes(q)) return;
+    list.innerHTML+=`
+      <div class="card">
+        <b>${n.number}</b><br>
+        Статус: ${n.status}
+        <div class="row">
+          <button onclick="setStatus(${n.id},'в наличии')">В наличии</button>
+          <button onclick="setStatus(${n.id},'продано')">Продано</button>
+          <button onclick="del(${n.id})">Удалить</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function add(){
+  if(!num.value) return;
+  fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ number:num.value })
+  }).then(()=>{
+    num.value="";
+    load();
+  });
+}
+
+function setStatus(id,s){
+  fetch(API+"/"+id,{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({status:s})
+  }).then(load);
+}
+
+function del(id){
+  fetch(API+"/"+id,{method:"DELETE"}).then(load);
+}
+
+search.oninput=load;
+</script>
+
+</body>
+</html>
